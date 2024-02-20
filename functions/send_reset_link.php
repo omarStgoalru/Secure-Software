@@ -2,7 +2,7 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-require __DIR__ . '/../vendor/autoload.php'; 
+require __DIR__ . '/../vendor/autoload.php';
 
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..'); 
 $dotenv->load();
@@ -18,18 +18,21 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 }
 
 try {
-    $checkEmailStmt = $connection_database->prepare("SELECT * FROM users WHERE email = ?");
+    $sql = "SELECT * FROM register_table WHERE register_user_name = ? OR email = ?";
+    $checkEmailStmt = $connection_database->prepare($sql);
+
     if (!$checkEmailStmt) {
-        throw new Exception("Prepare statement failed: " . $connection_database->error);
+        echo "Prepare statement failed: " . $connection_database->error;
+        exit;
     }
-    $checkEmailStmt->bind_param("s", $email);
+    $checkEmailStmt->bind_param("ss", $email, $email); // Correctly bind the variable twice
     $checkEmailStmt->execute();
     $result = $checkEmailStmt->get_result();
     if ($result->num_rows == 0) {
         echo "Email not registered.<br>";
         exit;
     }
-
+    
     $token = bin2hex(random_bytes(50));
     $stmt = $connection_database->prepare("INSERT INTO password_reset_requests (email, token) VALUES (?, ?)");
     if (!$stmt) {
@@ -46,12 +49,14 @@ try {
     $mail->isSMTP();
     $mail->Host = 'smtp.gmail.com';
     $mail->SMTPAuth = true;
-    $mail->Username = getenv('codingprojectweb@gmail.com'); 
-    $mail->Password = getenv('Codingprojectweb2024#'); 
+    
+    $mail->Username = 'codingprojectweb@gmail.com';
+    $mail->Password = 'sqzfepmxhfxotvqk';
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
     $mail->Port = 587;
 
-    $mail->setFrom('codingprojectweb@gmail.com', 'Mailer'); 
+    
+    $mail->setFrom('khaledahmedhaggagy@gmail.com', 'Mailer'); 
     $mail->addAddress($email);
 
     $mail->isHTML(true);
@@ -65,9 +70,6 @@ try {
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage();
 } finally {
-    if (isset($checkEmailStmt)) {
-        $checkEmailStmt->close();
-    }
     if (isset($stmt)) {
         $stmt->close();
     }
@@ -75,4 +77,3 @@ try {
         $connection_database->close();
     }
 }
-?>
